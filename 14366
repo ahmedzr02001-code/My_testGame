@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a0a2e">
+<title>مغامرة النجم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0a0518;
+    font-family: 'Tajawal', sans-serif;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+  
+  #game-container {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #0a0518;
+  }
+  
+  canvas {
+    display: block;
+    background: #1a0a2e;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+  
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 12px 14px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 10;
+    color: white;
+    font-weight: 700;
+  }
+  
+  .hud-item {
+    background: rgba(15, 8, 30, 0.65);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 200, 100, 0.25);
+    border-radius: 14px;
+    padding: 7px 13px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    font-size: 15px;
+    min-width: 60px;
+    justify-content: center;
+  }
+  
+  .hud-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  }
+  
+  /* أزرار التحكم */
+  #controls {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 20px 22px calc(20px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 20;
+  }
+  
+  .ctrl-group {
+    display: flex;
+    gap: 12px;
+    pointer-events: auto;
+  }
+  
+  .ctrl-btn {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.13);
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 800;
+    transition: transform 0.08s, background 0.08s;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .ctrl-btn:active, .ctrl-btn.active {
+    transform: scale(0.88);
+    background: rgba(255, 200, 100, 0.45);
+    border-color: rgba(255, 220, 130, 0.7);
+  }
+  
+  .ctrl-btn.jump {
+    width: 78px; height: 78px;
+    background: rgba(255, 180, 80, 0.32);
+    border-color: rgba(255, 200, 100, 0.55);
+    font-size: 32px;
+  }
+  
+  .ctrl-btn.jump:active, .ctrl-btn.jump.active {
+    background: rgba(255, 220, 130, 0.6);
+  }
+  
+  /* شاشات */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center top, #4a1a3a 0%, #1a0a2e 60%, #0a0518 100%);
+    z-index: 100;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    overflow: hidden;
+  }
+  
+  .screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 80% 20%, rgba(255,220,150,0.6), transparent),
+      radial-gradient(2px 2px at 30% 80%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 90% 50%, rgba(255,220,150,0.5), transparent);
+    background-size: 250px 250px;
+    background-repeat: repeat;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .screen.hidden { display: none; }
+  
+  .screen-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .title {
+    font-size: clamp(38px, 11vw, 76px);
+    font-weight: 900;
+    color: #ffd166;
+    text-shadow: 0 4px 0 #c44536, 0 6px 0 #8b2a1a, 0 10px 30px rgba(255, 100, 50, 0.5);
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  
+  .subtitle {
+    font-size: clamp(13px, 4vw, 18px);
+    color: #f4a261;
+    margin-bottom: 36px;
+    opacity: 0.95;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+  
+  .btn {
+    background: linear-gradient(180deg, #ffd166 0%, #f4a261 100%);
+    color: #1a0a2e;
+    border: none;
+    padding: 15px 44px;
+    font-size: 18px;
+    font-weight: 800;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #c44536, 0 10px 24px rgba(255, 100, 50, 0.35);
+    transition: transform 0.08s, box-shadow 0.08s;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+  }
+  
+  .btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #c44536, 0 4px 12px rgba(255, 100, 50, 0.3);
+  }
+  
+  .instructions {
+    margin-top: 28px;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    max-width: 320px;
+    line-height: 1.7;
+  }
+  
+  .instructions kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 1px 7px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #ffd166;
+  }
+  
+  .game-icon {
+    font-size: 70px;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 8px 20px rgba(255, 150, 50, 0.4));
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  .float-anim { animation: float 2.8s ease-in-out infinite; }
+  .pulse-anim { animation: pulse 2s ease-in-out infinite; }
+  
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 30px;
+    margin-top: 8px;
+  }
+  
+  .stat-box {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 12px 20px;
+    min-width: 90px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: #ffd166;
+  }
+  
+  @media (max-width: 380px) {
+    .ctrl-btn { width: 56px; height: 56px; font-size: 22px; }
+    .ctrl-btn.jump { width: 70px; height: 70px; font-size: 28px; }
+    .hud-item { padding: 6px 10px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="game"></canvas>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="hud-item">
+    <span class="hud-icon">🪙</span>
+    <span id="coins-display">0</span>
+  </div>
+  <div class="hud-item">
+    <span class="hud-icon">⭐</span>
+    <span id="score-display">0</span>
+  </div>
+  <div class="hud-item">
+    <span class="hud-icon">❤️</span>
+    <span id="lives-display">3</span>
+  </div>
+</div>
+
+<div id="controls" class="hidden">
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="btn-left" aria-label="يسار">◀</button>
+    <button class="ctrl-btn" id="btn-right" aria-label="يمين">▶</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn jump" id="btn-jump" aria-label="قفز">▲</button>
+  </div>
+</div>
+
+<div id="start-screen" class="screen">
+  <div class="screen-content">
+    <div class="game-icon float-anim">🍄</div>
+    <h1 class="title">مغامرة النجم</h1>
+    <p class="subtitle">اقفز، اجمع العملات، وتغلب على الأعداء في رحلة شيقة عبر العالم</p>
+    <button class="btn pulse-anim" id="start-btn">ابدأ اللعب</button>
+    <div class="instructions">
+      <strong style="color:#ffd166">طريقة اللعب:</strong><br>
+      على الكمبيوتر: استخدم <kbd>←</kbd> <kbd>→</kbd> للتحرك و <kbd>مسافة</kbd> للقفز<br>
+      على الهاتف: استخدم الأزرار على الشاشة<br>
+      اقفز فوق الأعداء لهزيمتهم — تجنب الفجوات!
+    </div>
+  </div>
+</div>
+
+<div id="win-screen" class="screen hidden">
+  <div class="screen-content">
+    <div class="game-icon float-anim">🏆</div>
+    <h1 class="title">فوز رائع!</h1>
+    <p class="subtitle" id="win-subtitle">لقد أكملت المغامرة بنجاح</p>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-label">عملات</div>
+        <div class="stat-value" id="win-coins">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">نقاط</div>
+        <div class="stat-value" id="win-score">0</div>
+      </div>
+    </div>
+    <button class="btn" id="restart-btn">العب مجدداً</button>
+  </div>
+</div>
+
+<div id="lose-screen" class="screen hidden">
+  <div class="screen-content">
+    <div class="game-icon">💀</div>
+    <h1 class="title">انتهت اللعبة</h1>
+    <p class="subtitle">لا تيأس، حاول مرة أخرى وأنت أقوى!</p>
+    <button class="btn" id="retry-btn">إعادة المحاولة</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  
+  let W = 0, H = 0, DPR = 1;
+  
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  
+  // ===== ثوابت اللعبة =====
+  const GRAVITY = 0.55;
+  const JUMP_POWER = -13.5;
+  const MOVE_SPEED = 4.2;
+  const FRICTION = 0.82;
+  const WORLD_WIDTH = 4800;
+  const MAX_FALL = 15;
+  
+  // ===== حالة اللعبة =====
+  let gameState = 'menu';
+  let cameraX = 0;
+  let score = 0;
+  let coinCount = 0;
+  let frameCount = 0;
+  let groundY = 0;
+  
+  // ===== اللاعب =====
+  const player = {
+    x: 80, y: 100, w: 26, h: 36,
+    vx: 0, vy: 0,
+    onGround: false,
+    facing: 1,
+    state: 'idle',
+    animFrame: 0,
+    lives: 3,
+    invulnerable: 0,
+    jumpHeld: false
+  };
+  
+  // ===== العناصر =====
+  let platforms = [];
+  let enemies = [];
+  let coins = [];
+  let blocks = [];
+  let particles = [];
+  let decorations = [];
+  let flag = null;
+  
+  // ===== المدخلات =====
+  const input = { left: false, right: false, jump: false };
+  
+  // ===== بناء المستوى =====
+  function buildLevel() {
+    platforms = [];
+    enemies = [];
+    coins = [];
+    blocks = [];
+    particles = [];
+    decorations = [];
+    
+    groundY = H - 90;
+    
+    // أرضيات مع فجوات
+    const groundSegments = [
+      [0, 850],
+      [980, 1550],
+      [1680, 2250],
+      [2380, 2950],
+      [3080, 3700],
+      [3830, WORLD_WIDTH]
+    ];
+    
+    groundSegments.forEach(([x1, x2]) => {
+      platforms.push({ x: x1, y: groundY, w: x2 - x1, h: H - groundY + 50, type: 'ground' });
+    });
+    
+    // منصات عائمة
+    const floatingPlatforms = [
+      { x: 340, y: groundY - 110, w: 110 },
+      { x: 540, y: groundY - 190, w: 90 },
+      { x: 1110, y: groundY - 100, w: 120 },
+      { x: 1310, y: groundY - 175, w: 100 },
+      { x: 1800, y: groundY - 120, w: 110 },
+      { x: 2000, y: groundY - 210, w: 95 },
+      { x: 2500, y: groundY - 110, w: 130 },
+      { x: 2700, y: groundY - 195, w: 110 },
+      { x: 3200, y: groundY - 100, w: 110 },
+      { x: 3400, y: groundY - 180, w: 100 },
+      { x: 3900, y: groundY - 140, w: 130 },
+      { x: 4100, y: groundY - 220, w: 100 },
+    ];
+    floatingPlatforms.forEach(p => platforms.push({ ...p, h: 18, type: 'platform' }));
+    
+    // أنابيب
+    const pipes = [
+      { x: 700, y: groundY - 55, w: 48, h: 55 },
+      { x: 1450, y: groundY - 75, w: 48, h: 75 },
+      { x: 2150, y: groundY - 55, w: 48, h: 55 },
+      { x: 2850, y: groundY - 85, w: 48, h: 85 },
+      { x: 3600, y: groundY - 65, w: 48, h: 65 },
+    ];
+    pipes.forEach(p => platforms.push({ ...p, type: 'pipe' }));
+    
+    // صناديق ?
+    const qBlocks = [
+      { x: 250, y: groundY - 120 },
+      { x: 1080, y: groundY - 120 },
+      { x: 1950, y: groundY - 240 },
+      { x: 2620, y: groundY - 120 },
+      { x: 3300, y: groundY - 120 },
+      { x: 3950, y: groundY - 195 },
+    ];
+    qBlocks.forEach(b => blocks.push({ x: b.x, y: b.y, w: 38, h: 38, hit: false }));
+    
+    // عملات
+    const coinPositions = [
+      [200, groundY - 60], [230, groundY - 60], [260, groundY - 60],
+      [370, groundY - 150], [400, groundY - 150], [430, groundY - 150],
+      [560, groundY - 230], [590, groundY - 230],
+      [820, groundY - 60], [850, groundY - 60],
+      [1130, groundY - 140], [1160, groundY - 140],
+      [1330, groundY - 215], [1360, groundY - 215],
+      [1500, groundY - 60], [1530, groundY - 60],
+      [1820, groundY - 160], [1850, groundY - 160],
+      [2020, groundY - 250], [2050, groundY - 250],
+      [2400, groundY - 60], [2430, groundY - 60],
+      [2520, groundY - 150], [2550, groundY - 150],
+      [2720, groundY - 235], [2750, groundY - 235],
+      [2900, groundY - 60], [2930, groundY - 60],
+      [3220, groundY - 140], [3250, groundY - 140],
+      [3420, groundY - 220], [3450, groundY - 220],
+      [3760, groundY - 60], [3790, groundY - 60],
+      [3920, groundY - 180], [3950, groundY - 180],
+      [4120, groundY - 260], [4150, groundY - 260],
+      [4200, groundY - 60], [4230, groundY - 60], [4260, groundY - 60],
+    ];
+    coinPositions.forEach(([x, y]) => coins.push({ x, y, w: 16, h: 20, collected: false, frame: Math.random() * Math.PI * 2 }));
+    
+    // أعداء
+    const enemyPositions = [
+      { x: 480, range: [440, 640] },
+      { x: 1000, range: [990, 1180] },
+      { x: 1230, range: [1200, 1400] },
+      { x: 1750, range: [1700, 1900] },
+      { x: 2050, range: [2000, 2200] },
+      { x: 2450, range: [2400, 2580] },
+      { x: 2650, range: [2600, 2820] },
+      { x: 3150, range: [3100, 3300] },
+      { x: 3450, range: [3400, 3600] },
+      { x: 3900, range: [3850, 4050] },
+      { x: 4150, range: [4100, 4300] },
+    ];
+    enemyPositions.forEach(e => enemies.push({
+      x: e.x, y: groundY - 28, w: 28, h: 28,
+      vx: 1.1, vy: 0, range: e.range,
+      alive: true, deathFrame: 0, frame: Math.random() * Math.PI * 2
+    }));
+    
+    // زينة
+    for (let i = 0; i < 25; i++) {
+      decorations.push({
+        type: Math.random() > 0.5 ? 'bush' : 'flower',
+        x: Math.random() * WORLD_WIDTH,
+        y: groundY,
+        size: 0.7 + Math.random() * 0.6
+      });
+    }
+    
+    // علم النهاية
+    flag = { x: WORLD_WIDTH - 180, y: groundY - 220, h: 220, wave: 0 };
+    
+    // إعادة تعيين اللاعب
+    player.x = 80;
+    player.y = groundY - player.h;
+    player.vx = 0;
+    player.vy = 0;
+    player.lives = 3;
+    player.invulnerable = 0;
+    player.facing = 1;
+    
+    score = 0;
+    coinCount = 0;
+    cameraX = 0;
+    
+    updateHUD();
+  }
+  
+  // ===== كشف التصادم =====
+  function rectCollide(a, b) {
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+  }
+  
+  // ===== التحديث =====
+  function update() {
+    if (gameState !== 'playing') return;
+    frameCount++;
+    
+    // حركة أفقية
+    if (input.left) {
+      player.vx = -MOVE_SPEED;
+      player.facing = -1;
+    } else if (input.right) {
+      player.vx = MOVE_SPEED;
+      player.facing = 1;
+    } else {
+      player.vx *= FRICTION;
+      if (Math.abs(player.vx) < 0.1) player.vx = 0;
+    }
+    
+    // القفز
+    if (input.jump && player.onGround && !player.jumpHeld) {
+      player.vy = JUMP_POWER;
+      player.onGround = false;
+      player.jumpHeld = true;
+      spawnJumpParticles();
+      playSound('jump');
+    }
+    if (!input.jump) player.jumpHeld = false;
+    
+    // قفز متغير (إذا ترك الزر، يقل ارتفاع القفز)
+    if (!input.jump && player.vy < -4) {
+      player.vy = -4;
+    }
+    
+    // الجاذبية
+    player.vy += GRAVITY;
+    if (player.vy > MAX_FALL) player.vy = MAX_FALL;
+    
+    // الحركة الأفقية مع التصادم
+    player.x += player.vx;
+    for (const p of platforms) {
+      if (rectCollide(player, p)) {
+        if (player.vx > 0) player.x = p.x - player.w;
+        else if (player.vx < 0) player.x = p.x + p.w;
+        player.vx = 0;
+      }
+    }
+    for (const b of blocks) {
+      if (rectCollide(player, b)) {
+        if (player.vx > 0) player.x = b.x - player.w;
+        else if (player.vx < 0) player.x = b.x + b.w;
+        player.vx = 0;
+      }
+    }
+    
+    // الحركة العمودية مع التصادم
+    player.y += player.vy;
+    player.onGround = false;
+    
+    for (const p of platforms) {
+      if (rectCollide(player, p)) {
+        if (player.vy > 0) {
+          player.y = p.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        } else if (player.vy < 0) {
+          player.y = p.y + p.h;
+          player.vy = 0;
+        }
+      }
+    }
+    
+    for (const b of blocks) {
+      if (rectCollide(player, b)) {
+        if (player.vy > 0) {
+          player.y = b.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        } else if (player.vy < 0) {
+          player.y = b.y + b.h;
+          player.vy = 1;
+          if (!b.hit) {
+            b.hit = true;
+            spawnBlockParticles(b);
+            playSound('coin');
+            coinCount++;
+            score += 50;
+            updateHUD();
+          }
+        }
+      }
+    }
+    
+    // حدود العالم
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.w > WORLD_WIDTH) player.x = WORLD_WIDTH - player.w;
+    
+    // السقوط في فجوة
+    if (player.y > H + 200) {
+      playerDie();
+      return;
+    }
+    
+    // حالة اللاعب
+    if (!player.onGround) player.state = 'jump';
+    else if (Math.abs(player.vx) > 0.5) player.state = 'run';
+    else player.state = 'idle';
+    player.animFrame += 0.2;
+    
+    if (player.invulnerable > 0) player.invulnerable--;
+    
+    // الكاميرا
+    const targetCam = player.x - W / 2 + player.w / 2;
+    cameraX += (targetCam - cameraX) * 0.12;
+    if (cameraX < 0) cameraX = 0;
+    if (cameraX > WORLD_WIDTH - W) cameraX = WORLD_WIDTH - W;
+    
+    // الأعداء
+    for (const e of enemies) {
+      if (!e.alive) { e.deathFrame++; continue; }
+      e.frame += 0.15;
+      e.x += e.vx;
+      if (e.x < e.range[0]) { e.x = e.range[0]; e.vx *= -1; }
+      else if (e.x + e.w > e.range[1]) { e.x = e.range[1] - e.w; e.vx *= -1; }
+      
+      if (player.invulnerable === 0 && rectCollide(player, e)) {
+        if (player.vy > 0 && player.y + player.h < e.y + e.h / 2 + 8) {
+          e.alive = false;
+          player.vy = JUMP_POWER * 0.55;
+          score += 100;
+          spawnDeathParticles(e.x + e.w / 2, e.y + e.h / 2);
+          playSound('stomp');
+          updateHUD();
+        } else {
+          playerHurt();
+        }
+      }
+    }
+    enemies = enemies.filter(e => e.alive || e.deathFrame < 25);
+    
+    // العملات
+    for (const c of coins) {
+      if (c.collected) continue;
+      c.frame += 0.15;
+      if (rectCollide(player, c)) {
+        c.collected = true;
+        coinCount++;
+        score += 50;
+        spawnCoinParticles(c.x + c.w / 2, c.y + c.h / 2);
+        playSound('coin');
+        updateHUD();
+      }
+    }
+    
+    // الجسيمات
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity || 0.2;
+      p.life--;
+      p.rotation = (p.rotation || 0) + (p.spin || 0);
+    }
+    particles = particles.filter(p => p.life > 0);
+    
+    // العلم
+    flag.wave += 0.1;
+    
+    // الوصول للعلم
+    if (player.x + player.w > flag.x + 5 && player.x < flag.x + 40) {
+      winGame();
+    }
+  }
+  
+  function playerHurt() {
+    if (player.invulnerable > 0) return;
+    player.lives--;
+    player.invulnerable = 90;
+    player.vy = -8;
+    player.vx = -player.facing * 5;
+    playSound('hurt');
+    updateHUD();
+    if (player.lives <= 0) {
+      setTimeout(playerDie, 600);
+    }
+  }
+  
+  function playerDie() {
+    if (gameState !== 'playing') return;
+    gameState = 'lose';
+    showScreen('lose-screen');
+  }
+  
+  function winGame() {
+    if (gameState !== 'playing') return;
+    gameState = 'win';
+    document.getElementById('win-coins').textContent = coinCount;
+    document.getElementById('win-score').textContent = score;
+    showScreen('win-screen');
+  }
+  
+  function showScreen(id) {
+    ['start-screen', 'win-screen', 'lose-screen'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+    const show = id === null;
+    document.getElementById('hud').classList.toggle('hidden', !show);
+    document.getElementById('controls').classList.toggle('hidden', !show);
+  }
+  
+  function hideAllScreens() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('win-screen').classList.add('hidden');
+    document.getElementById('lose-screen').classList.add('hidden');
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('controls').classList.remove('hidden');
+  }
+  
+  // ===== الجسيمات =====
+  function spawnJumpParticles() {
+    for (let i = 0; i < 6; i++) {
+      particles.push({
+        x: player.x + player.w / 2 + (Math.random() - 0.5) * 10,
+        y: player.y + player.h,
+        vx: (Math.random() - 0.5) * 3,
+        vy: Math.random() * -1.5,
+        life: 18, maxLife: 18,
+        color: '#d4a574', size: 3,
+        gravity: 0.15
+      });
+    }
+  }
+  
+  function spawnCoinParticles(x, y) {
+    for (let i = 0; i < 10; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 5,
+        vy: Math.random() * -4 - 2,
+        life: 32, maxLife: 32,
+        color: '#ffd166', size: 4,
+        type: 'star',
+        rotation: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.4,
+        gravity: 0.18
+      });
+    }
+  }
+  
+  function spawnDeathParticles(x, y) {
+    for (let i = 0; i < 12; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 6,
+        vy: Math.random() * -5 - 1,
+        life: 35, maxLife: 35,
+        color: i % 2 ? '#8b3a2a' : '#c44536', size: 4,
+        gravity: 0.25
+      });
+    }
+  }
+  
+  function spawnBlockParticles(b) {
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: b.x + b.w / 2,
+        y: b.y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: -Math.random() * 5 - 3,
+        life: 35, maxLife: 35,
+        color: '#ffd166', size: 5,
+        type: 'star',
+        rotation: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.4,
+        gravity: 0.2
+      });
+    }
+  }
+  
+  function updateHUD() {
+    document.getElementById('coins-display').textContent = coinCount;
+    document.getElementById('score-display').textContent = score;
+    document.getElementById('lives-display').textContent = player.lives;
+  }
+  
+  // ===== الصوت =====
+  let audioCtx = null;
+  function initAudio() {
+    if (audioCtx) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) {}
+  }
+  
+  function playSound(type) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    
+    const sounds = {
+      jump: { freq: [320, 580], dur: 0.12, type: 'square', vol: 0.08 },
+      coin: { freq: [988, 1319], dur: 0.18, type: 'square', vol: 0.1 },
+      stomp: { freq: [180, 60], dur: 0.18, type: 'square', vol: 0.12 },
+      hurt: { freq: [400, 90], dur: 0.35, type: 'triangle', vol: 0.12 },
+    };
+    
+    const s = sounds[type];
+    if (!s) return;
+    
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = s.type;
+    o.frequency.setValueAtTime(s.freq[0], now);
+    o.frequency.setValueAtTime(s.freq[1], now + s.dur * 0.5);
+    g.gain.setValueAtTime(s.vol, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + s.dur);
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start(now);
+    o.stop(now + s.dur);
+  }
+  
+  // ===== الرسم =====
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    
+    drawBackground();
+    
+    if (gameState !== 'playing') return;
+    
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+    
+    // الزينة الخلفية
+    for (const d of decorations) {
+      if (d.x < cameraX - 50 || d.x > cameraX + W + 50) continue;
+      drawDecoration(d);
+    }
+    
+    // المنصات
+    for (const p of platforms) {
+      if (p.x + p.w < cameraX - 20 || p.x > cameraX + W + 20) continue;
+      drawPlatform(p);
+    }
+    
+    // الصناديق
+    for (const b of blocks) {
+      if (b.x + b.w < cameraX - 20 || b.x > cameraX + W + 20) continue;
+      drawBlock(b);
+    }
+    
+    // العملات
+    for (const c of coins) {
+      if (c.collected) continue;
+      if (c.x + c.w < cameraX - 20 || c.x > cameraX + W + 20) continue;
+      drawCoin(c);
+    }
+    
+    // العلم
+    drawFlag();
+    
+    // الأعداء
+    for (const e of enemies) {
+      if (e.x + e.w < cameraX - 20 || e.x > cameraX + W + 20) continue;
+      drawEnemy(e);
+    }
+    
+    // اللاعب
+    drawPlayer();
+    
+    // الجسيمات
+    for (const p of particles) drawParticle(p);
+    
+    ctx.restore();
+  }
+  
+  function drawBackground() {
+    // تدرج السماء - وقت الغروب
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#1a0a2e');
+    grad.addColorStop(0.25, '#4a1a5e');
+    grad.addColorStop(0.5, '#8b3a6e');
+    grad.addColorStop(0.75, '#d65a5a');
+    grad.addColorStop(1, '#f4a261');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    
+    // شمس
+    const sunX = W * 0.75 - cameraX * 0.08;
+    const sunY = H * 0.35;
+    const sunRadius = Math.max(30, H * 0.06);
+    
+    const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunRadius * 3);
+    sunGlow.addColorStop(0, 'rgba(255, 230, 150, 0.5)');
+    sunGlow.addColorStop(0.4, 'rgba(255, 180, 100, 0.2)');
+    sunGlow.addColorStop(1, 'rgba(255, 180, 100, 0)');
+    ctx.fillStyle = sunGlow;
+    ctx.fillRect(sunX - sunRadius * 3, sunY - sunRadius * 3, sunRadius * 6, sunRadius * 6);
+    
+    ctx.fillStyle = '#ffe699';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // نجوم
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    const starOffset = cameraX * 0.08;
+    for (let i = 0; i < 40; i++) {
+      const sx = ((i * 137.5 - starOffset) % (W + 100) + W + 100) % (W + 100);
+      const sy = (i * 71.3) % (H * 0.4);
+      const twinkle = Math.sin(frameCount * 0.05 + i) * 0.4 + 0.6;
+      ctx.globalAlpha = twinkle * 0.7;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+    
+    // جبال بعيدة
+    ctx.fillStyle = 'rgba(50, 25, 70, 0.7)';
+    const mtnOffset = cameraX * 0.25;
+    for (let i = -1; i < 8; i++) {
+      const mx = i * 380 - (mtnOffset % 380);
+      drawMountain(mx, H * 0.7, 380, 140);
+    }
+    
+    // تلال متوسطة
+    ctx.fillStyle = 'rgba(75, 35, 85, 0.85)';
+    const hillOffset = cameraX * 0.45;
+    for (let i = -1; i < 10; i++) {
+      const hx = i * 280 - (hillOffset % 280);
+      drawHill(hx, H * 0.78, 280, 90);
+    }
+    
+    // غيوم
+    const cloudOffset = cameraX * 0.15;
+    for (let i = 0; i < 6; i++) {
+      const cx = ((i * 360 + 80 - cloudOffset) % (W + 200) + W + 200) % (W + 200) - 100;
+      const cy = 70 + (i % 3) * 35;
+      drawCloud(cx, cy);
+    }
+  }
+  
+  function drawMountain(x, y, w, h) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w * 0.3, y - h * 0.6);
+    ctx.lineTo(x + w * 0.5, y - h);
+    ctx.lineTo(x + w * 0.7, y - h * 0.7);
+    ctx.lineTo(x + w, y);
+    ctx.closePath();
+    ctx.fill();
+    
+    // قمة ثلجية
+    ctx.fillStyle = 'rgba(220, 200, 230, 0.6)';
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.42, y - h * 0.8);
+    ctx.lineTo(x + w * 0.5, y - h);
+    ctx.lineTo(x + w * 0.58, y - h * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(50, 25, 70, 0.7)';
+  }
+  
+  function drawHill(x, y, w, h) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + w / 2, y - h * 1.6, x + w, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  
+  function drawCloud(x, y) {
+    ctx.fillStyle = 'rgba(255, 220, 200, 0.55)';
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.arc(x + 18, y - 4, 20, 0, Math.PI * 2);
+    ctx.arc(x + 40, y, 16, 0, Math.PI * 2);
+    ctx.arc(x + 25, y + 6, 14, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  function drawDecoration(d) {
+    if (d.type === 'bush') {
+      ctx.fillStyle = '#3a6b28';
+      const s = d.size;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y - 8 * s, 12 * s, 0, Math.PI * 2);
+      ctx.arc(d.x + 14 * s, d.y - 10 * s, 14 * s, 0, Math.PI * 2);
+      ctx.arc(d.x + 28 * s, d.y - 8 * s, 12 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#4d8232';
+      ctx.beginPath();
+      ctx.arc(d.x + 4 * s, d.y - 12 * s, 6 * s, 0, Math.PI * 2);
+      ctx.arc(d.x + 18 * s, d.y - 14 * s, 7 * s, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#e8d24a';
+      ctx.fillRect(d.x, d.y - 12, 2, 12);
+      ctx.beginPath();
+      ctx.arc(d.x + 1, d.y - 14, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ff6b9d';
+      ctx.beginPath();
+      ctx.arc(d.x + 1, d.y - 14, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  
+  function drawPlatform(p) {
+    if (p.type === 'ground') {
+      // تراب
+      const grad = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+      grad.addColorStop(0, '#8b5a3c');
+      grad.addColorStop(0.4, '#6b4423');
+      grad.addColorStop(1, '#3d2817');
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      
+      // عشب علوي
+      ctx.fillStyle = '#4a7a2a';
+      ctx.fillRect(p.x, p.y, p.w, 10);
+      ctx.fillStyle = '#5fa838';
+      ctx.fillRect(p.x, p.y, p.w, 5);
+      ctx.fillStyle = '#6fc045';
+      for (let i = 0; i < p.w; i += 8) {
+        ctx.fillRect(p.x + i, p.y, 2, 3);
+      }
+      
+      // نقاط
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      for (let i = 0; i < p.w; i += 35) {
+        ctx.fillRect(p.x + i + 5, p.y + 22, 4, 4);
+        ctx.fillRect(p.x + i + 18, p.y + 38, 3, 3);
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      for (let i = 0; i < p.w; i += 50) {
+        ctx.fillRect(p.x + i + 12, p.y + 18, 3, 3);
+      }
+    } else if (p.type === 'platform') {
+      const grad = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+      grad.addColorStop(0, '#7a5a3a');
+      grad.addColorStop(1, '#4a3520');
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = '#5fa838';
+      ctx.fillRect(p.x, p.y, p.w, 5);
+      ctx.fillStyle = '#6fc045';
+      ctx.fillRect(p.x, p.y, p.w, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
+    } else if (p.type === 'pipe') {
+      const grad = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
+      grad.addColorStop(0, '#1d5a28');
+      grad.addColorStop(0.3, '#3da850');
+      grad.addColorStop(0.6, '#5cc16a');
+      grad.addColorStop(1, '#1d5a28');
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x, p.y + 12, p.w, p.h - 12);
+      
+      // فم الأنبوب
+      ctx.fillStyle = '#1d5a28';
+      ctx.fillRect(p.x - 4, p.y, p.w + 8, 14);
+      const mouthGrad = ctx.createLinearGradient(p.x - 4, 0, p.x + p.w + 4, 0);
+      mouthGrad.addColorStop(0, '#2d8a3e');
+      mouthGrad.addColorStop(0.5, '#6fd07a');
+      mouthGrad.addColorStop(1, '#2d8a3e');
+      ctx.fillStyle = mouthGrad;
+      ctx.fillRect(p.x - 4, p.y, p.w + 8, 8);
+      
+      // ظل داخلي
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(p.x + 4, p.y + 8, p.w - 8, 3);
+    }
+  }
+  
+  function drawBlock(b) {
+    if (b.hit) {
+      ctx.fillStyle = '#6a4a2a';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = '#4a3018';
+      ctx.fillRect(b.x, b.y, b.w, 3);
+      ctx.fillRect(b.x, b.y + b.h - 3, b.w, 3);
+      ctx.fillRect(b.x, b.y, 3, b.h);
+      ctx.fillRect(b.x + b.w - 3, b.y, 3, b.h);
+      // براغي
+      ctx.fillStyle = '#8a6a4a';
+      ctx.fillRect(b.x + 4, b.y + 4, 3, 3);
+      ctx.fillRect(b.x + b.w - 7, b.y + 4, 3, 3);
+      ctx.fillRect(b.x + 4, b.y + b.h - 7, 3, 3);
+      ctx.fillRect(b.x + b.w - 7, b.y + b.h - 7, 3, 3);
+    } else {
+      const pulse = Math.sin(frameCount * 0.08) * 0.15 + 0.85;
+      const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+      grad.addColorStop(0, '#ffd166');
+      grad.addColorStop(0.5, '#f4a261');
+      grad.addColorStop(1, '#c44536');
+      ctx.fillStyle = grad;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      
+      // لمعان
+      ctx.fillStyle = `rgba(255, 240, 180, ${pulse * 0.4})`;
+      ctx.fillRect(b.x + 3, b.y + 3, b.w - 6, 4);
+      
+      // ?
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 22px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', b.x + b.w / 2, b.y + b.h / 2 + 1);
+      
+      ctx.strokeStyle = '#8b2a1a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+    }
+  }
+  
+  function drawCoin(c) {
+    const phase = Math.sin(c.frame);
+    const w = Math.max(4, Math.abs(phase) * c.w + 4);
+    
+    ctx.save();
+    ctx.translate(c.x + c.w / 2, c.y + c.h / 2);
+    
+    // ظل
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(0, c.h / 2 + 3, c.w / 2, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // عملة
+    const grad = ctx.createLinearGradient(-w/2, -c.h/2, w/2, c.h/2);
+    grad.addColorStop(0, '#fff5a0');
+    grad.addColorStop(0.5, '#ffd166');
+    grad.addColorStop(1, '#c4912a');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, c.h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // لمعان
+    if (phase > 0.3) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.beginPath();
+      ctx.ellipse(-w/6, -c.h/6, w/8, c.h/8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    ctx.strokeStyle = '#8b6a1a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, c.h / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.restore();
+  }
+  
+  function drawEnemy(e) {
+    if (!e.alive) {
+      // مسطح
+      ctx.fillStyle = '#5a2a1a';
+      ctx.fillRect(e.x, e.y + e.h - 6, e.w, 6);
+      ctx.fillStyle = '#3a1a0a';
+      ctx.fillRect(e.x, e.y + e.h - 2, e.w, 2);
+      return;
+    }
+    
+    const bounce = Math.sin(e.frame * 2) * 2;
+    const cx = e.x + e.w / 2;
+    const cy = e.y + e.h / 2 + bounce;
+    
+    // ظل
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, e.y + e.h, e.w / 2 - 2, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // جسم
+    ctx.fillStyle = '#8b3a2a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 4, e.w / 2, e.h / 2 - 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // بطن
+    ctx.fillStyle = '#c44536';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 6, e.w / 3, e.h / 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // عيون
+    const eyeOff = e.vx > 0 ? 1 : -1;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(cx - 6, cy - 2, 5, 0, Math.PI * 2);
+    ctx.arc(cx + 6, cy - 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#1a0a2e';
+    ctx.beginPath();
+    ctx.arc(cx - 6 + eyeOff, cy - 1, 2.5, 0, Math.PI * 2);
+    ctx.arc(cx + 6 + eyeOff, cy - 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // حواجب
+    ctx.strokeStyle = '#1a0a2e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy - 8);
+    ctx.lineTo(cx - 3, cy - 5);
+    ctx.moveTo(cx + 10, cy - 8);
+    ctx.lineTo(cx + 3, cy - 5);
+    ctx.stroke();
+    
+    // أقدام
+    const footSwing = Math.sin(e.frame * 3) * 2;
+    ctx.fillStyle = '#3a1a0a';
+    ctx.fillRect(cx - 10, e.y + e.h - 4 - footSwing, 8, 4);
+    ctx.fillRect(cx + 2, e.y + e.h - 4 + footSwing, 8, 4);
+  }
+  
+  function drawPlayer() {
+    if (player.invulnerable > 0 && Math.floor(player.invulnerable / 4) % 2 === 0) return;
+    
+    const px = player.x, py = player.y, w = player.w, h = player.h;
+    
+    ctx.save();
+    
+    if (player.facing === -1) {
+      ctx.translate(px + w, py);
+      ctx.scale(-1, 1);
+    } else {
+      ctx.translate(px, py);
+    }
+    
+    // ظل
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(w / 2, h + 2, w / 2, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // ساقين
+    if (player.state === 'run') {
+      const legSwing = Math.sin(player.animFrame) * 5;
+      ctx.fillStyle = '#1a3a8b';
+      ctx.fillRect(5, h - 14, 7, 14 + legSwing);
+      ctx.fillRect(w - 12, h - 14, 7, 14 - legSwing);
+      ctx.fillStyle = '#3a1a0a';
+      ctx.fillRect(3, h - 5 + legSwing, 11, 5);
+      ctx.fillRect(w - 14, h - 5 - legSwing, 11, 5);
+    } else if (player.state === 'jump') {
+      ctx.fillStyle = '#1a3a8b';
+      ctx.fillRect(4, h - 15, 7, 11);
+      ctx.fillRect(w - 11, h - 15, 7, 11);
+      ctx.fillStyle = '#3a1a0a';
+      ctx.fillRect(2, h - 6, 11, 5);
+      ctx.fillRect(w - 13, h - 6, 11, 5);
+    } else {
+      ctx.fillStyle = '#1a3a8b';
+      ctx.fillRect(5, h - 14, 7, 14);
+      ctx.fillRect(w - 12, h - 14, 7, 14);
+      ctx.fillStyle = '#3a1a0a';
+      ctx.fillRect(3, h - 5, 11, 5);
+      ctx.fillRect(w - 14, h - 5, 11, 5);
+    }
+    
+    // جسم
+    ctx.fillStyle = '#c44536';
+    ctx.fillRect(3, 13, w - 6, h - 27);
+    
+    // حمالات
+    ctx.fillStyle = '#1a3a8b';
+    ctx.fillRect(7, 13, 4, h - 27);
+    ctx.fillRect(w - 11, 13, 4, h - 27);
+    
+    // أزرار
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(w / 2 - 1, 17, 3, 3);
+    ctx.fillRect(w / 2 - 1, 23, 3, 3);
+    
+    // يدين
+    ctx.fillStyle = '#c44536';
+    if (player.state === 'run') {
+      const armSwing = Math.sin(player.animFrame) * 4;
+      ctx.fillRect(-1, 15 - armSwing, 6, 11);
+      ctx.fillRect(w - 5, 15 + armSwing, 6, 11);
+    } else if (player.state === 'jump') {
+      ctx.fillRect(-2, 11, 6, 11);
+      ctx.fillRect(w - 4, 11, 6, 11);
+    } else {
+      ctx.fillRect(-1, 17, 6, 11);
+      ctx.fillRect(w - 5, 17, 6, 11);
+    }
+    
+    // قفازات
+    ctx.fillStyle = 'white';
+    if (player.state === 'run') {
+      const armSwing = Math.sin(player.animFrame) * 4;
+      ctx.fillRect(-1, 22 - armSwing, 6, 4);
+      ctx.fillRect(w - 5, 22 + armSwing, 6, 4);
+    } else if (player.state === 'jump') {
+      ctx.fillRect(-2, 18, 6, 4);
+      ctx.fillRect(w - 4, 18, 6, 4);
+    } else {
+      ctx.fillRect(-1, 24, 6, 4);
+      ctx.fillRect(w - 5, 24, 6, 4);
+    }
+    
+    // رأس
+    ctx.fillStyle = '#ffd9a8';
+    ctx.fillRect(5, 1, w - 10, 13);
+    
+    // شعر جانبي
+    ctx.fillStyle = '#3a1a0a';
+    ctx.fillRect(5, 8, 3, 5);
+    ctx.fillRect(w - 8, 8, 3, 5);
+    
+    // قبعة
+    ctx.fillStyle = '#c44536';
+    ctx.fillRect(1, 0, w - 2, 6);
+    ctx.fillRect(3, 0, w - 6, 8);
+    ctx.fillRect(0, 4, w, 3);
+    // لمعان القبعة
+    ctx.fillStyle = '#e85a4a';
+    ctx.fillRect(3, 1, w - 6, 2);
+    
+    // حافة القبعة
+    ctx.fillStyle = '#8b2a1a';
+    ctx.fillRect(0, 6, w, 2);
+    
+    // عين
+    ctx.fillStyle = 'white';
+    ctx.fillRect(w - 14, 5, 5, 5);
+    ctx.fillStyle = '#1a3a8b';
+    ctx.fillRect(w - 12, 6, 2, 3);
+    
+    // أنف
+    ctx.fillStyle = '#e8a070';
+    ctx.fillRect(w - 10, 8, 4, 3);
+    
+    // شارب
+    ctx.fillStyle = '#3a1a0a';
+    ctx.fillRect(w - 16, 11, 9, 2);
+    
+    ctx.restore();
+  }
+  
+  function drawFlag() {
+    // قاعدة
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(flag.x - 8, flag.y + flag.h - 6, 24, 6);
+    
+    // عمود
+    const poleGrad = ctx.createLinearGradient(flag.x, 0, flag.x + 6, 0);
+    poleGrad.addColorStop(0, '#aaa');
+    poleGrad.addColorStop(0.5, '#fff');
+    poleGrad.addColorStop(1, '#777');
+    ctx.fillStyle = poleGrad;
+    ctx.fillRect(flag.x, flag.y, 6, flag.h);
+    
+    // كرة قمة
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.arc(flag.x + 3, flag.y - 2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff5a0';
+    ctx.beginPath();
+    ctx.arc(flag.x + 1, flag.y - 4, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // علم متذبذب
+    const wave = Math.sin(flag.wave) * 4;
+    const wave2 = Math.sin(flag.wave + 1) * 3;
+    
+    ctx.fillStyle = '#27ae60';
+    ctx.beginPath();
+    ctx.moveTo(flag.x + 6, flag.y + 8);
+    ctx.lineTo(flag.x + 55 + wave, flag.y + 15 + wave2);
+    ctx.lineTo(flag.x + 50 + wave, flag.y + 30);
+    ctx.lineTo(flag.x + 6, flag.y + 35);
+    ctx.closePath();
+    ctx.fill();
+    
+    // ظل العلم
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(flag.x + 6, flag.y + 25);
+    ctx.lineTo(flag.x + 50 + wave, flag.y + 30);
+    ctx.lineTo(flag.x + 6, flag.y + 35);
+    ctx.closePath();
+    ctx.fill();
+    
+    // نجمة على العلم
+    ctx.fillStyle = '#ffd166';
+    drawStar(flag.x + 30 + wave * 0.5, flag.y + 20 + wave2 * 0.5, 5, 5);
+  }
+  
+  function drawStar(cx, cy, r, points) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const angle = (i * Math.PI) / points - Math.PI / 2;
+      const radius = i % 2 === 0 ? r : r / 2.2;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  
+  function drawParticle(p) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    
+    if (p.type === 'star') {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation || 0);
+      drawStar(0, 0, p.size, 5);
+      ctx.restore();
+    } else {
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    
+    ctx.globalAlpha = 1;
+  }
+  
+  // ===== حلقة اللعبة =====
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  
+  // ===== المدخلات =====
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { input.left = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { input.right = true; e.preventDefault(); }
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+      input.jump = true;
+      e.preventDefault();
+    }
+    if (e.key === 'Enter' && gameState !== 'playing') {
+      if (gameState === 'menu') startGame();
+      else if (gameState === 'win' || gameState === 'lose') startGame();
+    }
+  });
+  
+  window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') input.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') input.right = false;
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') input.jump = false;
+  });
+  
+  // أزرار اللمس
+  function setupButton(id, action) {
+    const btn = document.getElementById(id);
+    const start = e => {
+      e.preventDefault();
+      input[action] = true;
+      btn.classList.add('active');
+      initAudio();
+    };
+    const end = e => {
+      e.preventDefault();
+      input[action] = false;
+      btn.classList.remove('active');
+    };
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', end, { passive: false });
+    btn.addEventListener('touchcancel', end, { passive: false });
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+  }
+  
+  setupButton('btn-left', 'left');
+  setupButton('btn-right', 'right');
+  setupButton('btn-jump', 'jump');
+  
+  // منع السلوكيات الافتراضية
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('touchmove', e => {
+    if (e.target.tagName !== 'BUTTON') e.preventDefault();
+  }, { passive: false });
+  
+  // ===== بدء اللعبة =====
+  function startGame() {
+    initAudio();
+    buildLevel();
+    gameState = 'playing';
+    hideAllScreens();
+  }
+  
+  document.getElementById('start-btn').addEventListener('click', startGame);
+  document.getElementById('restart-btn').addEventListener('click', startGame);
+  document.getElementById('retry-btn').addEventListener('click', startGame);
+  
+  // ابدأ الحلقة
+  loop();
+})();
+</script>
+</body>
+</html>
